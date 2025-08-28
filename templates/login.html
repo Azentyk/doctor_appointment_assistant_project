@@ -1,0 +1,348 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login | Azentyk</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            --primary-color: #4361ee;
+            --primary-hover: #3a56d4;
+            --error-color: #ef233c;
+            --success-color: #4cc9f0;
+            --text-color: #2b2d42;
+            --light-text: #8d99ae;
+            --background: #f8f9fa;
+            --white: #ffffff;
+            --border-radius: 8px;
+            --box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+            --transition: all 0.3s ease;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--background);
+            color: var(--text-color);
+            line-height: 1.6;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            padding: 20px;
+            background-image: linear-gradient(135deg, rgba(67, 97, 238, 0.1) 0%, rgba(255, 255, 255, 0.9) 100%);
+        }
+
+        .login-container {
+            width: 100%;
+            max-width: 420px;
+            background: var(--white);
+            border-radius: var(--border-radius);
+            box-shadow: var(--box-shadow);
+            overflow: hidden;
+            transition: var(--transition);
+        }
+
+        .login-header {
+            padding: 30px;
+            text-align: center;
+            background-color: var(--primary-color);
+            color: var(--white);
+        }
+
+        .login-header h1 {
+            font-size: 24px;
+            font-weight: 600;
+            margin-bottom: 5px;
+        }
+
+        .login-header p {
+            font-size: 14px;
+            opacity: 0.9;
+        }
+
+        .login-body {
+            padding: 30px;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-size: 14px;
+            font-weight: 500;
+            color: var(--text-color);
+        }
+
+        .input-field {
+            position: relative;
+        }
+
+        .input-field input {
+            width: 100%;
+            padding: 12px 15px 12px 40px;
+            border: 1px solid #e0e0e0;
+            border-radius: var(--border-radius);
+            font-size: 14px;
+            transition: var(--transition);
+        }
+
+        .input-field input:focus {
+            outline: none;
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 2px rgba(67, 97, 238, 0.2);
+        }
+
+        .input-field i {
+            position: absolute;
+            left: 15px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--light-text);
+            font-size: 16px;
+        }
+
+        .btn {
+            width: 100%;
+            padding: 12px;
+            background-color: var(--primary-color);
+            color: var(--white);
+            border: none;
+            border-radius: var(--border-radius);
+            font-size: 16px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: var(--transition);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .btn:hover {
+            background-color: var(--primary-hover);
+        }
+
+        .btn i {
+            font-size: 14px;
+        }
+
+        .error-message {
+            color: var(--error-color);
+            font-size: 13px;
+            margin-top: 5px;
+            display: block;
+            text-align: center;
+        }
+
+        .success-message {
+            color: var(--success-color);
+            font-size: 13px;
+            margin-top: 5px;
+            display: block;
+            text-align: center;
+        }
+
+        .login-footer {
+            text-align: center;
+            padding: 20px 30px;
+            border-top: 1px solid #f0f0f0;
+            font-size: 14px;
+            color: var(--light-text);
+        }
+
+        .login-footer a {
+            color: var(--primary-color);
+            text-decoration: none;
+            font-weight: 500;
+        }
+
+        .login-footer a:hover {
+            text-decoration: underline;
+        }
+
+        .forgot-password {
+            text-align: right;
+            margin-top: -10px;
+            margin-bottom: 20px;
+        }
+
+        .forgot-password a {
+            color: var(--light-text);
+            font-size: 13px;
+            text-decoration: none;
+        }
+
+        .forgot-password a:hover {
+            color: var(--primary-color);
+        }
+
+        .social-login {
+            margin: 20px 0;
+            text-align: center;
+        }
+
+        .social-login p {
+            color: var(--light-text);
+            font-size: 13px;
+            margin-bottom: 15px;
+            position: relative;
+        }
+
+        .social-login p::before,
+        .social-login p::after {
+            content: "";
+            display: inline-block;
+            width: 30%;
+            height: 1px;
+            background: #e0e0e0;
+            position: absolute;
+            top: 50%;
+        }
+
+        .social-login p::before {
+            left: 0;
+        }
+
+        .social-login p::after {
+            right: 0;
+        }
+
+        .social-icons {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+        }
+
+        .social-icon {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: #f0f0f0;
+            color: var(--text-color);
+            transition: var(--transition);
+        }
+
+        .social-icon:hover {
+            background: #e0e0e0;
+        }
+
+        @media (max-width: 480px) {
+            .login-container {
+                max-width: 100%;
+            }
+            
+            .login-header, 
+            .login-body {
+                padding: 20px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="login-container">
+        <div class="login-header">
+            <h1>Welcome Back</h1>
+            <p>Sign in to your Azentyk account</p>
+        </div>
+
+        <div class="login-body">
+            <!-- Display message if any -->
+            {% if message %}
+            <div class="error-message">
+                <i class="fas fa-exclamation-circle"></i> {{ message }}
+            </div>
+            {% endif %}
+
+            <!-- Login Form -->
+            <form method="post" action="/login">
+                <div class="form-group">
+                    <label for="email">Email Address</label>
+                    <div class="input-field">
+                        <i class="fas fa-envelope"></i>
+                        <input type="email" id="email" name="email" placeholder="Enter your email address" required>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="password">Password</label>
+                    <div class="input-field">
+                        <i class="fas fa-lock"></i>
+                        <input type="password" id="password" name="password" placeholder="Enter your password" required>
+                    </div>
+                </div>
+
+                <div class="forgot-password">
+                    <a href="/forgot-password">Forgot password?</a>
+                </div>
+
+                <button type="submit" class="btn">
+                    <i class="fas fa-sign-in-alt"></i> Sign In
+                </button>
+            </form>
+
+            <div class="social-login">
+                <p>or continue with</p>
+                <div class="social-icons">
+                    <a href="#" class="social-icon">
+                        <i class="fab fa-google"></i>
+                    </a>
+                    <a href="#" class="social-icon">
+                        <i class="fab fa-microsoft"></i>
+                    </a>
+                    <a href="#" class="social-icon">
+                        <i class="fab fa-apple"></i>
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <div class="login-footer">
+            Don't have an account? <a href="/register">Create account</a>
+        </div>
+    </div>
+
+    <script>
+        // Client-side validation for email format
+        document.querySelector('form').addEventListener('submit', function(e) {
+            const emailInput = document.getElementById('email');
+            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+            
+            if (!emailRegex.test(emailInput.value)) {
+                e.preventDefault();
+                const errorDiv = document.createElement('div');
+                errorDiv.className = 'error-message';
+                errorDiv.innerHTML = '<i class="fas fa-exclamation-circle"></i> Please enter a valid email address';
+                
+                // Remove any existing error message
+                const existingError = document.querySelector('.error-message');
+                if (existingError) {
+                    existingError.remove();
+                }
+                
+                // Insert the error message
+                emailInput.parentElement.parentElement.insertAdjacentElement('afterend', errorDiv);
+                emailInput.focus();
+            }
+        });
+    </script>
+</body>
+
+</html>

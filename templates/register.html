@@ -1,0 +1,187 @@
+<!-- templates/register.html -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+  <title>Register | Azentyk</title>
+  <style>
+    :root {
+      --primary-color: #0078D7;
+      --primary-hover: #005BBB;
+      --bg-color: #f4f7fc;
+      --text-color: #333;
+      --transition: 0.2s ease;
+    }
+    *, *::before, *::after { box-sizing: border-box; }
+    body {
+      margin: 0; padding: 0;
+      font-family: 'Segoe UI', Roboto, Arial, sans-serif;
+      background-color: var(--bg-color);
+      display: grid; place-items: center;
+      min-height: 100vh;
+      background-image: url('https://img.freepik.com/premium-photo/modern-technology-background-generative-ai_155807-2609.jpg');
+      background-size: cover; background-position: center;
+    }
+    .form-container {
+      background: rgba(255,255,255,0.95);
+      padding: 2rem;
+      border-radius: 0.75rem;
+      width: 100%; max-width: 450px;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.1);
+      text-align: center;
+    }
+    h1 {
+      margin-bottom: 1rem;
+      font-size: 1.75rem;
+      font-weight: 700;
+      color: var(--text-color);
+    }
+    .message {
+      color: #c92c2c;
+      font-weight: 600;
+      margin-bottom: 1rem;
+    }
+    form { display: grid; gap: 1rem; text-align: left; }
+    label {
+      display: block;
+      margin-bottom: 0.25rem;
+      font-weight: 500;
+    }
+    input, select {
+      width: 100%;
+      padding: 0.75rem 1rem;
+      font-size: 1rem;
+      border: 1px solid #ccc;
+      border-radius: 0.5rem;
+      transition: border-color var(--transition);
+    }
+    input:focus, select:focus {
+      outline: none;
+      border-color: var(--primary-color);
+    }
+    .button-container {
+      display: flex;
+      gap: 1rem;
+      justify-content: center;
+      margin-top: 0.5rem;
+    }
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0.75rem 1.5rem;
+      font-size: 1rem;
+      font-weight: 600;
+      border-radius: 0.5rem;
+      text-decoration: none;
+      cursor: pointer;
+      transition: transform var(--transition), box-shadow var(--transition);
+      border: 2px solid transparent;
+    }
+    .btn--primary {
+      background-color: var(--primary-color);
+      color: #fff;
+      border-color: var(--primary-color);
+      box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+    }
+    .btn--primary:hover {
+      background-color: var(--primary-hover);
+      box-shadow: 0 6px 12px rgba(0,0,0,0.15);
+      transform: translateY(-2px);
+    }
+    .btn--outline {
+      background: transparent;
+      color: var(--primary-color);
+      border-color: var(--primary-color);
+    }
+    .btn--outline:hover {
+      background-color: var(--primary-color);
+      color: #fff;
+      box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+      transform: translateY(-2px);
+    }
+    .footer {
+      margin-top: 1.5rem;
+      font-size: 0.9rem;
+    }
+    .footer a {
+      color: var(--primary-color);
+      text-decoration: none;
+      font-weight: 500;
+    }
+    .footer a:hover { text-decoration: underline; }
+  </style>
+</head>
+<body>
+  <main class="form-container" role="main" aria-labelledby="register-heading">
+    <h1 id="register-heading">Create Your Account</h1>
+
+    {% if message %}
+      <p class="message">{{ message }}</p>
+    {% endif %}
+
+    <form method="post" action="/register" novalidate>
+      <div>
+        <label for="firstname">First Name</label>
+        <input type="text" id="firstname" name="firstname" placeholder="First Name" required />
+      </div>
+    
+      <div>
+        <label for="email">Email Address</label>
+        <input type="email" id="email" name="email" placeholder="you@example.com" required />
+      </div>
+    
+      <div>
+        <label for="phone">Phone Number</label>
+        <input type="tel" id="phone" name="phone" placeholder="+1234567890" required />
+      </div>
+    
+      <div>
+        <label for="country">Country</label>
+        <select id="country" name="country" required>
+          <option value="" disabled selected>Select your country</option>
+          <option value="United States">United States</option>
+          <option value="India">India</option>
+          <option value="United Kingdom">United Kingdom</option>
+        </select>
+      </div>
+    
+      <div>
+        <label for="state">State</label>
+        <input type="text" id="state" name="state" placeholder="Your state" required />
+      </div>
+    
+      <div>
+        <label for="location">Location</label>
+        <input type="text" id="location" name="location" placeholder="Street or area" required />
+      </div>
+    
+      <div>
+        <label for="city">City</label>
+        <input type="text" id="city" name="city" placeholder="Your city" required />
+      </div>
+    
+      <div>
+        <label for="password">Password</label>
+        <input
+          type="password"
+          id="password"
+          name="password"
+          placeholder="Create a password"
+          required
+        />
+      </div>
+    
+      <div class="button-container">
+        <button type="submit" class="btn btn--primary">Register</button>
+        <a href="/login" class="btn btn--outline">Login</a>
+      </div>
+    </form>
+        
+    <div class="footer">
+      <p>© 2025 Azentyk. All rights reserved.</p>
+    </div>
+  </main>
+</body>
+</html>
