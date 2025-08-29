@@ -1,12 +1,12 @@
 from datetime import datetime
 import logging
-from fastapi import Request
+from flask import request
 
 # Configure logger
 logger = logging.getLogger("session_logger")
 logger.setLevel(logging.INFO)
 
-# Optional: File handler (if you want logs in a file)
+# File handler for logs (Azure App Service will pick up logs automatically from stdout/stderr)
 file_handler = logging.FileHandler("session_logs.log")
 formatter = logging.Formatter(
     "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
@@ -14,16 +14,21 @@ formatter = logging.Formatter(
 file_handler.setFormatter(formatter)
 logger.addHandler(file_handler)
 
+# Also log to console (important for Azure monitoring)
+console_handler = logging.StreamHandler()
+console_handler.setFormatter(formatter)
+logger.addHandler(console_handler)
 
-def create_session_record(request: Request, email: str, session_id: str):
+
+def create_session_record(email: str, session_id: str):
     """Log creation of a new session"""
     try:
         now = datetime.now()
         session_data = {
             "session_id": session_id,
             "user_email": email,
-            "ip_address": request.client.host,
-            "user_agent": request.headers.get("user-agent", ""),
+            "ip_address": request.remote_addr,
+            "user_agent": request.headers.get("User-Agent", ""),
             "start_time": str(now),
             "status": "active",
         }

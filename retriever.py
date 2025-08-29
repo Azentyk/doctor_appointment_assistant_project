@@ -1,40 +1,38 @@
 from langchain_chroma import Chroma
-from langchain.retrievers import ContextualCompressionRetriever
-from langchain.retrievers.document_compressors import LLMChainExtractor
-from langchain.retrievers import EnsembleRetriever
+from langchain.retrievers import ContextualCompressionRetriever, EnsembleRetriever
+from langchain.retrievers.document_compressors import LLMChainFilter
 from langchain_community.retrievers import BM25Retriever
+from langchain_openai import AzureOpenAIEmbeddings
 from model import llm_model
 import os
 
-from langchain.retrievers.document_compressors import LLMChainFilter
-from langchain.retrievers.multi_query import MultiQueryRetriever
-from langchain.retrievers.document_compressors import LLMChainFilter
-from langchain_openai import AzureOpenAIEmbeddings
-
-
 llm = llm_model()
 
-embedding_deployment_name = os.environ['embedding_deployment_name']
-embedding_api_version =os.environ['embedding_api_version']
-embedding_azure_endpoint = os.environ['embedding_azure_endpoint']
-embedding_api_key = os.environ['embedding_api_key']
-embedding_model =  os.environ['embedding_model']
-embedding_model_version = os.environ['embedding_model_version']
+# # Load Azure OpenAI embedding environment
+# embedding_deployment_name = os.environ["embedding_deployment_name"]
+# embedding_api_version = os.environ["embedding_api_version"]
+# embedding_azure_endpoint = os.environ["embedding_azure_endpoint"]
+# embedding_api_key = os.environ["embedding_api_key"]
 
 def retriever_model():
 
-    embeddings = AzureOpenAIEmbeddings(model= "text-embedding-3-small",
-        azure_deployment = embedding_deployment_name,api_version=embedding_api_version,azure_endpoint=embedding_azure_endpoint,api_key=embedding_api_key
+    # Initialize embeddings
+    embeddings = AzureOpenAIEmbeddings(
+        model="text-embedding-3-small",
+        azure_deployment="call-automation-openai-text-embedding-3-small",
+        api_version="2023-05-15",
+        azure_endpoint="https://call-automation-openai.openai.azure.com/",
+        api_key="FsUF4JAg0SbHFchYIFNjxIEUPOmnt9i5uA6UMcf49TrPk7qFbrphJQQJ99BDACYeBjFXJ3w3AAABACOGX1Nm",
     )
 
-    db = Chroma(persist_directory=r"./doctor_details_db",embedding_function=embeddings)
+    # Load vector DB retriever
+    db = Chroma(
+        persist_directory="./doctor_details_db",
+        embedding_function=embeddings
+    )
 
     retriever = db.as_retriever(search_kwargs={'k':20})
-
-
-    # compressor = LLMChainExtractor.from_llm(llm)
-    # _filter = LLMChainFilter.from_llm(llm)
+    # compressor = LLMChainExtractor.from_llm(llm) # _filter = LLMChainFilter.from_llm(llm)
     # compression_retriever = ContextualCompressionRetriever(base_compressor=_filter, base_retriever=retriever)
-
 
     return retriever

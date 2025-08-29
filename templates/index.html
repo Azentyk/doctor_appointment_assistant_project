@@ -10,6 +10,7 @@
         // Session ID injected by FastAPI template
         const sessionId = "{{ session_id }}";
     </script>
+
     <!-- Favicon -->
     <link rel="icon" href="/static/favicon.ico" type="image/x-icon">
     
@@ -478,33 +479,34 @@
     <!-- Main Chat Application -->
     <div class="chat-app">
         <!-- Header with Title and Auth Button -->
-        <header class="app-header">
-            <h1 class="app-title">
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
-                    <path fill-rule="evenodd" d="M11.484 2.17a.75.75 0 011.032 0 11.209 11.209 0 007.877 3.08.75.75 0 01.722.515 12.74 12.74 0 01.635 3.985c0 5.942-4.064 10.933-9.563 12.348a.749.749 0 01-.374 0C6.314 20.683 2.25 15.692 2.25 9.75c0-1.39.223-2.73.635-3.985a.75.75 0 01.722-.516l.143.001c2.996 0 5.718-1.17 7.734-3.08zM12 8.25a.75.75 0 01.75.75v3.75a.75.75 0 01-1.5 0V9a.75.75 0 01.75-.75zM12 15a.75.75 0 00-.75.75v.008c0 .414.336.75.75.75h.008a.75.75 0 00.75-.75v-.008a.75.75 0 00-.75-.75H12z" clip-rule="evenodd" />
-                </svg>
-                Azentyk Doctor Assistant
-            </h1>
-            {% if request.session.get("user") %}
-                <a href="/logout" class="auth-button logout-button" onclick="handleLogout()">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
-                        <polyline points="16 17 21 12 16 7"></polyline>
-                        <line x1="21" y1="12" x2="9" y2="12"></line>
-                    </svg>
-                    Logout
-                </a>
-            {% else %}
-                <a href="/login" class="auth-button login-button">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"></path>
-                        <polyline points="10 17 15 12 10 7"></polyline>
-                        <line x1="15" y1="12" x2="3" y2="12"></line>
-                    </svg>
-                    Login
-                </a>
-            {% endif %}
-        </header>
+<header class="app-header">
+    <h1 class="app-title">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
+            <path fill-rule="evenodd" d="M11.484 2.17a.75.75 0 011.032 0 11.209 11.209 0 007.877 3.08.75.75 0 01.722.515 12.74 12.74 0 01.635 3.985c0 5.942-4.064 10.933-9.563 12.348a.749.749 0 01-.374 0C6.314 20.683 2.25 15.692 2.25 9.75c0-1.39.223-2.73.635-3.985a.75.75 0 01.722-.516l.143.001c2.996 0 5.718-1.17 7.734-3.08zM12 8.25a.75.75 0 01.75.75v3.75a.75.75 0 01-1.5 0V9a.75.75 0 01.75-.75zM12 15a.75.75 0 00-.75.75v.008c0 .414.336.75.75.75h.008a.75.75 0 00.75-.75v-.008a.75.75 0 00-.75-.75H12z" clip-rule="evenodd" />
+        </svg>
+        Azentyk Doctor Assistant
+    </h1>
+
+    {% if session.get("user") %}
+        <a href="{{ url_for('auth.logout') }}" class="auth-button logout-button" onclick="handleLogout()">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+                <polyline points="16 17 21 12 16 7"></polyline>
+                <line x1="21" y1="12" x2="9" y2="12"></line>
+            </svg>
+            Logout
+        </a>
+    {% else %}
+        <a href="{{ url_for('auth.login_page') }}" class="auth-button login-button">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"></path>
+                <polyline points="10 17 15 12 10 7"></polyline>
+                <line x1="15" y1="12" x2="3" y2="12"></line>
+            </svg>
+            Login
+        </a>
+    {% endif %}
+</header>
 
         <!-- Hidden Initial Greeting -->
         <div id="initial-greeting" class="hidden">{{ greeting }}</div>
@@ -558,6 +560,10 @@
         let voiceEnabled = true;
         let recognizing = false;
         const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+        if (!SpeechRecognition) {
+            console.warn("Speech recognition not supported in this browser.");
+            micButton.style.display = "none";
+        }
         const recognition = SpeechRecognition ? new SpeechRecognition() : null;
 
         // Initialize Speech Recognition
@@ -626,15 +632,15 @@
             await fetchBotResponse(message);
         }
 
+
         async function fetchBotResponse(message) {
             try {
                 showTypingIndicator();
-
                 const response = await fetch(`/chat/${sessionId}`, {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ user_input: message })
-                });
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ user_input: message })
+                    });
 
                 if (!response.ok) throw new Error("Network response was not ok");
 
@@ -648,38 +654,38 @@
             }
         }
 
+
         function formatBotResponse(text) {
-            // Convert markdown-style lists to HTML lists
             let formattedText = text;
-            
-            // Convert unordered lists
-            formattedText = formattedText.replace(/^\s*-\s(.+)$/gm, "<li>$1</li>");
-            formattedText = formattedText.replace(/^\s*\*\s(.+)$/gm, "<li>$1</li>");
-            
-            // Convert ordered lists
-            formattedText = formattedText.replace(/^\s*\d+\.\s(.+)$/gm, "<li>$1</li>");
-            
-            // Wrap consecutive list items in <ul> or <ol>
-            formattedText = formattedText.replace(/(<li>.*<\/li>)+/g, function(match) {
-                return `<ul>${match}</ul>`;
-            });
-            
-            // Convert **bold** to <strong>
+
+            // Handle bold first
             formattedText = formattedText.replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>");
-            
-            // Convert *italic* to <em>
+            // Handle italic
             formattedText = formattedText.replace(/\*(.*?)\*/g, "<em>$1</em>");
-            
-            // Convert line breaks to paragraphs
-            formattedText = formattedText.split('\n\n').map(paragraph => {
-                if (!paragraph.startsWith('<ul>') && !paragraph.startsWith('<li>')) {
+
+            // Ordered lists: convert "1. item" into <li>
+            formattedText = formattedText.replace(/^\s*\d+\.\s(.+)$/gm, "<li>$1</li>");
+            // Unordered lists: convert "- item" or "* item" into <li>
+            formattedText = formattedText.replace(/^\s*[-*]\s(.+)$/gm, "<li>$1</li>");
+
+            // Wrap consecutive <li> items into <ol> or <ul>
+            // First handle ordered lists
+            formattedText = formattedText.replace(/(<li>.*<\/li>)+/g, match => {
+                // If the list started with a number, wrap in <ol>
+                return /^\s*\d+\./.test(text) ? `<ol>${match}</ol>` : `<ul>${match}</ul>`;
+            });
+
+            // Convert double line breaks to paragraphs (but don’t wrap list blocks)
+            formattedText = formattedText.split(/\n\s*\n/).map(paragraph => {
+                if (!paragraph.match(/^<ul>|^<ol>|^<li>/)) {
                     return `<p>${paragraph}</p>`;
                 }
                 return paragraph;
             }).join('');
-            
+
             return formattedText;
         }
+
 
         function appendMessage(sender, text) {
             const messageContainer = document.createElement("div");
@@ -863,27 +869,38 @@
             stopSpeaking();
         });
 
-        // Add this at the beginning of your script section
-        function checkSession() {
-            fetch('/check-session')
-                .then(response => response.json())
-                .then(data => {
-                    if (!data.valid) {
-                        window.location.href = '/login';
-                    }
-                })
-                .catch(error => {
-                    console.error('Session check failed:', error);
+        // ✅ Check if session is still valid
+        async function checkSession() {
+            try {
+                const response = await fetch("/check-session", {
+                    method: "GET",
+                    headers: { "Content-Type": "application/json" },
+                    credentials: "include"  // ensure cookies/session are sent
                 });
+
+                if (!response.ok) {
+                    throw new Error("Session validation request failed");
+                }
+
+                const data = await response.json();
+
+                if (!data.valid) {
+                    // Optional: clear UI state before redirect
+                    alert("Your session has expired. Please log in again.");
+                    window.location.href = "/login";
+                }
+            } catch (error) {
+                console.error("Session check failed:", error);
+            }
         }
 
-        // Call this periodically (every 5 minutes)
+        // ✅ Check immediately when the page loads
+        window.addEventListener("load", checkSession);
+
+        // ✅ Check periodically (every 5 minutes = 300000 ms)
         setInterval(checkSession, 300000);
-
-        // Also call it when the page loads
-        window.addEventListener('load', checkSession);
-
-
     </script>
+
+
 </body>
 </html>
