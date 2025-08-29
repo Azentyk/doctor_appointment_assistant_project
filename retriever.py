@@ -1,8 +1,3 @@
-import sys
-import pysqlite3
-
-sys.modules["sqlite3"] = pysqlite3
-
 from langchain_chroma import Chroma
 from langchain.retrievers import ContextualCompressionRetriever, EnsembleRetriever
 from langchain.retrievers.document_compressors import LLMChainFilter
