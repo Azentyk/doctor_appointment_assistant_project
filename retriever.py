@@ -1,3 +1,8 @@
+import sys
+import pysqlite3
+# Override default sqlite3 with the new one
+sys.modules["sqlite3"] = pysqlite3
+
 from langchain_chroma import Chroma
 from langchain.retrievers import ContextualCompressionRetriever, EnsembleRetriever
 from langchain.retrievers.document_compressors import LLMChainFilter
