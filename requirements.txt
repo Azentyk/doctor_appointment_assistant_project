@@ -14,10 +14,10 @@ langchain
 langchain-community
 langchain-core
 langchainhub
-chromadb
 tiktoken
 langchain-openai
 langchain_chroma
+langchain-chroma
 pymongo
 itsdangerous
 jinja2
