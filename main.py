@@ -1,5 +1,10 @@
 # main.py
 import os
+import sys
+import pysqlite3
+# Override default sqlite3 with the new one
+sys.modules["sqlite3"] = pysqlite3
+
 from flask import Flask, render_template, session
 from flask_session import Session
 from logger import setup_logging
