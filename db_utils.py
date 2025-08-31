@@ -142,3 +142,24 @@ def push_patient_each_chat_message(message_text: str):
     except Exception as e:
         logger.error(f"Error inserting chat message: {e}")
         return None
+
+
+def patient_each_chat_table_collection(message_text: str):
+    """Insert individual chat message into database"""
+    try:
+        now = datetime.now()
+        current_date = now.strftime("%Y-%m-%d")
+        current_time = now.strftime("%H:%M:%S")
+
+        patient_data = {
+            'date': current_date,
+            'time': current_time,
+            'message': message_text.strip()
+        }
+
+        insert_result = chat_collection.insert_one(patient_data)
+        logger.info(f"Inserted Patient Chat Data ID: {insert_result.inserted_id}")
+        return insert_result
+    except Exception as e:
+        logger.error(f"Error inserting chat message: {e}")
+        return None
