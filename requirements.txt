@@ -24,3 +24,4 @@ jinja2
 mysql-connector-python
 flask
 Flask-Session
+pysqlite3-binary
