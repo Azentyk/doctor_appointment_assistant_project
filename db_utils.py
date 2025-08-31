@@ -6,9 +6,6 @@ from pymongo import MongoClient
 import logging
 import os
 
-# Get connection string from environment variable
-MONGO_URI = os.getenv("AZURE_COSMOS_CONNECTIONSTRING")
-
 # Initialize MongoDB client with TLS
 client = MongoClient("mongodb://doctor-appointment-assistant-server:0TliSJPl3CaL1ZFGGWbiJX6P2y0ZdpVDWKnFOTa6GVF5Mqau4MEdlz79gA2Bt95VhUFRcfcUygcgACDbGV9yLA==@doctor-appointment-assistant-server.mongo.cosmos.azure.com:10255/patient_db?ssl=true&replicaSet=globaldb&retrywrites=false&maxIdleTimeMS=120000&appName=@doctor-appointment-assistant-server@",tls=True, tlsAllowInvalidCertificates=False)
 db = client["patient_db"]
