@@ -4,9 +4,13 @@ import hashlib
 import pandas as pd
 from pymongo import MongoClient
 import logging
+import os
 
-# Initialize MongoDB client
-client = MongoClient("mongodb://doctor-appointment-assistant-server:0TliSJPl3CaL1ZFGGWbiJX6P2y0ZdpVDWKnFOTa6GVF5Mqau4MEdlz79gA2Bt95VhUFRcfcUygcgACDbGV9yLA==@doctor-appointment-assistant-server.mongo.cosmos.azure.com:10255/patient_db?ssl=true&replicaSet=globaldb&retrywrites=false&maxIdleTimeMS=120000&appName=@doctor-appointment-assistant-server@")
+# Get connection string from environment variable
+MONGO_URI = os.getenv("AZURE_COSMOS_CONNECTIONSTRING")
+
+# Initialize MongoDB client with TLS
+client = MongoClient("mongodb://doctor-appointment-assistant-server:0TliSJPl3CaL1ZFGGWbiJX6P2y0ZdpVDWKnFOTa6GVF5Mqau4MEdlz79gA2Bt95VhUFRcfcUygcgACDbGV9yLA==@doctor-appointment-assistant-server.mongo.cosmos.azure.com:10255/patient_db?ssl=true&replicaSet=globaldb&retrywrites=false&maxIdleTimeMS=120000&appName=@doctor-appointment-assistant-server@",tls=True, tlsAllowInvalidCertificates=False)
 db = client["patient_db"]
 
 # Collections
@@ -19,7 +23,6 @@ logger = logging.getLogger(__name__)
 
 def init_db():
     """Initialize database collections if they don't exist"""
-    # This will create collections automatically when data is first inserted
     pass
 
 def hash_password(password: str) -> str:
@@ -64,19 +67,14 @@ def register_user(firstname: str, email: str, phone: str, country: str,
                  state: str, location: str, city: str, password: str) -> Optional[str]:
     """Register a new user in the database"""
     try:
-        # Check if email or phone already exists
         if patient_credentials_collection.find_one({"email": email}):
-            logger.warning(f"Registration failed - email already exists: {email}")
             return "Email already registered."
         if patient_credentials_collection.find_one({"phone": phone}):
-            logger.warning(f"Registration failed - phone already exists: {phone}")
             return "Phone number already registered."
 
-        # Hash the password
         hashed = hash_password(password)
-
         now = datetime.now()
-        # Create the user document
+
         user_document = {
             "firstname": firstname,
             "email": email,
@@ -89,10 +87,9 @@ def register_user(firstname: str, email: str, phone: str, country: str,
             "created_at": str(now)
         }
 
-        # Insert into MongoDB
         patient_credentials_collection.insert_one(user_document)
         logger.info(f"New user registered: {email}")
-        return None  # Success
+        return None
     except Exception as e:
         logger.error(f"Registration error for {email}: {e}")
         return "Registration failed. Please try again."
@@ -102,7 +99,6 @@ def get_user_contact_info(email: str) -> List[Dict[str, str]]:
     try:
         df = load_users_df()
         ele_user_id = df[df['email'] == email]
-        logger.info(f"Retrieved contact info for user: {email}")
         contact_info = ele_user_id[["firstname", "email", "phone"]]
         return contact_info.to_dict(orient="records")
     except Exception as e:
@@ -113,14 +109,10 @@ def push_patient_information_data_to_db(patient_data: dict):
     """Insert patient information into database"""
     try:
         now = datetime.now()
-        current_date = now.strftime("%Y-%m-%d")
-        current_time = now.strftime("%H:%M:%S")
-
-        patient_data['date'] = str(current_date)
-        patient_data['time'] = str(current_time)
+        patient_data['date'] = now.strftime("%Y-%m-%d")
+        patient_data['time'] = now.strftime("%H:%M:%S")
 
         insert_result = patient_information_details_table_collection.insert_one(patient_data)
-        logger.info(f"Inserted Patient Information Data ID: {insert_result.inserted_id}")
         return insert_result
     except Exception as e:
         logger.error(f"Error inserting patient information: {e}")
@@ -130,34 +122,25 @@ def push_patient_chat_data_to_db(patient_data: dict):
     """Insert patient chat data into database"""
     try:
         now = datetime.now()
-        current_date = now.strftime("%Y-%m-%d")
-        current_time = now.strftime("%H:%M:%S")
-
-        patient_data['date'] = str(current_date)
-        patient_data['time'] = str(current_time)
+        patient_data['date'] = now.strftime("%Y-%m-%d")
+        patient_data['time'] = now.strftime("%H:%M:%S")
 
         insert_result = patient_chat_table_collection.insert_one(patient_data)
-        logger.info(f"Inserted Patient Chat Data ID: {insert_result.inserted_id}")
         return insert_result
     except Exception as e:
         logger.error(f"Error inserting patient chat data: {e}")
         return None
 
-def patient_each_chat_table_collection(message_text: str):
+def push_patient_each_chat_message(message_text: str):
     """Insert individual chat message into database"""
     try:
         now = datetime.now()
-        current_date = now.strftime("%Y-%m-%d")
-        current_time = now.strftime("%H:%M:%S")
-
         patient_data = {
-            'date': current_date,
-            'time': current_time,
+            'date': now.strftime("%Y-%m-%d"),
+            'time': now.strftime("%H:%M:%S"),
             'message': message_text.strip()
         }
-
         insert_result = chat_collection.insert_one(patient_data)
-        logger.info(f"Inserted Patient Chat Data ID: {insert_result.inserted_id}")
         return insert_result
     except Exception as e:
         logger.error(f"Error inserting chat message: {e}")
