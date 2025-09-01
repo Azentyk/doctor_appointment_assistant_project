@@ -18,7 +18,7 @@ tiktoken
 langchain-openai
 langchain_chroma
 langchain-chroma
-pymongo
+pymongo>=3.12,<4.0
 itsdangerous
 jinja2
 mysql-connector-python
