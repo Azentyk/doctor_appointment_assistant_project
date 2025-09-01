@@ -48,7 +48,7 @@ def register_page():
             f"Registration successful for {email} from IP {request.remote_addr} "
             f"User-Agent: {request.headers.get('User-Agent', '')}"
         )
-        return redirect(url_for("auth.login_page"))
+        return redirect(url_for("login.html"))
 
     logger.warning(
         f"Registration failed for {email}. Reason: {error}. "
