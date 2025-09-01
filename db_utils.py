@@ -9,21 +9,21 @@ import os
 from pymongo import MongoClient
 from urllib.parse import quote_plus
 # Raw credentials
-username = "doctor-appointment-assistant-server"
-password = "Azentyk@123"   # your real primary password
+# username = "doctor-appointment-assistant-server"
+# password = "Azentyk@123"   # your real primary password
 
-# Escape special characters in password
-username_escaped = quote_plus(username)
-password_escaped = quote_plus(password)
+# # Escape special characters in password
+# username_escaped = quote_plus(username)
+# password_escaped = quote_plus(password)
 
-# Build URI
-uri = f"mongodb://{username_escaped}:{password_escaped}@doctor-appointment-assistant-server.mongo.cosmos.azure.com:10255/?ssl=true&replicaSet=globaldb&retrywrites=false&maxIdleTimeMS=120000&appName=@doctor-appointment-assistant-server@"
+# # Build URI
+# uri = f"mongodb://{username_escaped}:{password_escaped}@doctor-appointment-assistant-server.mongo.cosmos.azure.com:10255/?ssl=true&replicaSet=globaldb&retrywrites=false&maxIdleTimeMS=120000&appName=@doctor-appointment-assistant-server@"
 
-# Create client
-client = MongoClient(uri)
+# # Create client
+# client = MongoClient(uri)
 
 # Initialize MongoDB client with TLS
-# client = MongoClient("mongodb://doctor-appointment-assistant-server:0TliSJPl3CaL1ZFGGWbiJX6P2y0ZdpVDWKnFOTa6GVF5Mqau4MEdlz79gA2Bt95VhUFRcfcUygcgACDbGV9yLA==@doctor-appointment-assistant-server.mongo.cosmos.azure.com:10255/patient_db?ssl=true&replicaSet=globaldb&retrywrites=false&maxIdleTimeMS=120000&appName=@doctor-appointment-assistant-server@",tls=True, tlsAllowInvalidCertificates=False)
+client = MongoClient("mongodb://doctor-appointment-assistant-server:0TliSJPl3CaL1ZFGGWbiJX6P2y0ZdpVDWKnFOTa6GVF5Mqau4MEdlz79gA2Bt95VhUFRcfcUygcgACDbGV9yLA==@doctor-appointment-assistant-server.mongo.cosmos.azure.com:10255/patient_db?ssl=true&replicaSet=globaldb&retrywrites=false&maxIdleTimeMS=120000&appName=@doctor-appointment-assistant-server@",tls=True, tlsAllowInvalidCertificates=False)
 db = client["patient_db"]
 
 # Collections
