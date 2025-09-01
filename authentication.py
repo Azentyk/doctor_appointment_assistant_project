@@ -54,8 +54,7 @@ def register_page():
         f"Registration failed for {email}. Reason: {error}. "
         f"IP: {request.remote_addr}, User-Agent: {request.headers.get('User-Agent', '')}"
     )
-
-    flash(error, "error")
+    
     return render_template("register.html", message=error)
 
 
