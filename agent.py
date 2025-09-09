@@ -21,19 +21,62 @@ def get_formatted_date() -> str:
 def get_default_config(email: str) -> Dict:
     """
     Generate a config dictionary with patient data and a unique thread ID.
-    Works both locally and on Azure.
+    This version defensively normalizes contact_info to a dict no matter what
+    the data source returns (None, dict, list, nested list, etc).
     """
-    contact_info = get_user_contact_info(email)
-    if not contact_info:
-        logger.warning(f"No contact info found for {email}. Using defaults.")
-        contact_info = [{"firstname": "Unknown", "phone": "N/A"}]
+    raw_contact = get_user_contact_info(email)
+
+    # Defensive normalization ------------------------------------------------
+    contact_info = None
+
+    # If caller returned a dict directly, use it.
+    if isinstance(raw_contact, dict):
+        contact_info = raw_contact
+
+    # If it's a list, try to extract a dict from it (first candidate that is a dict).
+    elif isinstance(raw_contact, list):
+        # Find first dict element inside list (handles list-of-lists too)
+        found = None
+        for item in raw_contact:
+            if isinstance(item, dict):
+                found = item
+                break
+            # if item is a single-element list containing a dict, try that
+            if isinstance(item, list) and len(item) > 0 and isinstance(item[0], dict):
+                found = item[0]
+                break
+        if found is not None:
+            contact_info = found
+        else:
+            # no dict found — log and fall through to defaults
+            logger.warning(
+                "[Azure] get_user_contact_info returned a list, but no dict found "
+                f"for {email}. Raw preview: {str(raw_contact)[:300]}"
+            )
+
+    # Anything else (None, str, etc) — log and fallback
     else:
-        contact_info = contact_info[0]  # Assuming first record is correct
+        if raw_contact is not None:
+            logger.warning(
+                "[Azure] get_user_contact_info returned unexpected type "
+                f"{type(raw_contact).__name__} for {email}. Preview: {str(raw_contact)[:300]}"
+            )
 
-    current_date = get_formatted_date()
-    contact_info['current_date'] = current_date
+    # If still no usable contact_info, use default values
+    if not isinstance(contact_info, dict):
+        logger.info(f"[Azure] No usable contact info for {email}; using default values.")
+        contact_info = {"firstname": "Unknown", "phone": "N/A"}
 
-    logger.info(f"[Azure] Fetched contact info for {email}: {contact_info}")
+    # Now safe to use contact_info as a dict
+    try:
+        current_date = get_formatted_date()
+        contact_info['current_date'] = current_date
+    except Exception as e:
+        logger.exception(f"[Azure] Error setting current_date for contact_info of {email}: {e}")
+        # ensure contact_info has the key even if exception occurred
+        contact_info.setdefault('current_date', get_formatted_date())
+
+    logger.info(f"[Azure] Normalized contact info for {email}: {contact_info}")
 
     patient_data = (
         f"Name: {contact_info.get('firstname', 'Unknown')}, "
