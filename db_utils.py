@@ -23,7 +23,8 @@ from urllib.parse import quote_plus
 # client = MongoClient(uri)
 
 # Initialize MongoDB client with TLS
-client = MongoClient("mongodb://doctor-appointment-assistant-server:3py24M6mo6I72QKYXlLXPcMrAVBXUgQKfspJ5ebbpZ81pw9v75hM6TjpWRQaTAk5SZj4RPuVJYwHACDbD1HlIw==@doctor-appointment-assistant-server.mongo.cosmos.azure.com:10255/?ssl=true&retrywrites=false&replicaSet=globaldb&maxIdleTimeMS=120000&appName=@doctor-appointment-assistant-server@",tls=True, tlsAllowInvalidCertificates=False)
+# client = MongoClient("mongodb://doctor-appointment-assistant-server:3py24M6mo6I72QKYXlLXPcMrAVBXUgQKfspJ5ebbpZ81pw9v75hM6TjpWRQaTAk5SZj4RPuVJYwHACDbD1HlIw==@doctor-appointment-assistant-server.mongo.cosmos.azure.com:10255/?ssl=true&retrywrites=false&replicaSet=globaldb&maxIdleTimeMS=120000&appName=@doctor-appointment-assistant-server@",tls=True, tlsAllowInvalidCertificates=False)
+client = MongoClient("mongodb+srv://sundaresan:W4C3zjtFx5qHTPni@cluster0.b9aaq47.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0")
 db = client["patient_db"]
 
 # Collections
