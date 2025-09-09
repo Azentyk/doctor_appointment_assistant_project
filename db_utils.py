@@ -1,240 +1,211 @@
-from flask import Blueprint, request, session, render_template, redirect, url_for, jsonify
+from typing import Optional, List, Dict
 from datetime import datetime
+import hashlib
+import pandas as pd
+from pymongo import MongoClient
 import logging
+import os
 
-from agent import get_or_create_agent_for_user, remove_agent
-from db_utils import (
-    patient_each_chat_table_collection,
-    push_patient_information_data_to_db,
-    push_patient_chat_data_to_db
-)
-from session import update_session_record
-from patient_bot_conversational import *
-from prompt import doctor_appointment_patient_data_extraction_prompt
+from urllib.parse import quote_plus
 
-chat_bp = Blueprint("chat", __name__)
+# --- Optional: example of building a connection string with escaped credentials ---
+# username = "doctor-appointment-assistant-server"
+# password = "Azentyk@123"   # your real primary password
+# username_escaped = quote_plus(username)
+# password_escaped = quote_plus(password)
+# uri = f"mongodb://{username_escaped}:{password_escaped}@doctor-appointment-assistant-server.mongo.cosmos.azure.com:10255/?ssl=true&replicaSet=globaldb&retrywrites=false&maxIdleTimeMS=120000&appName=@doctor-appointment-assistant-server@"
+# client = MongoClient(uri, tls=True, tlsAllowInvalidCertificates=False)
+
+# Initialize MongoDB client with TLS
+client = MongoClient("mongodb://doctor-appointment-assistant-server:3py24M6mo6I72QKYXlLXPcMrAVBXUgQKfspJ5ebbpZ81pw9v75hM6TjpWRQaTAk5SZj4RPuVJYwHACDbD1HlIw==@doctor-appointment-assistant-server.mongo.cosmos.azure.com:10255/?ssl=true&retrywrites=false&replicaSet=globaldb&maxIdleTimeMS=120000&appName=@doctor-appointment-assistant-server@",tls=True, tlsAllowInvalidCertificates=False)
+db = client["patient_db"]
+
+# Collections
+patient_information_details_table_collection = db["patient_information_details_table"]
+patient_chat_table_collection = db["patient_chat_table"]
+chat_collection = db["patient_each_chat_table"]
+patient_credentials_collection = db["patient_credentials"]
+
 logger = logging.getLogger(__name__)
 
 
-# --------------------------
-# GET: Chat page
-# --------------------------
-@chat_bp.route("/chat/<session_id>", methods=["GET"])
-def chat_page(session_id):
-    # Session validation
-    if ("user" not in session or "session_id" not in session or session.get("session_id") != session_id):
-        try:
-            update_session_record(session_id, "unauthorized_access_attempt")
-        except Exception:
-            logger.exception("Failed to record unauthorized access attempt")
-        logger.warning(f"Unauthorized access attempt for session_id={session_id}")
-        return redirect(url_for("auth.login_page"))
+def init_db():
+    """Initialize database collections if they don't exist.
 
+    Note: MongoDB creates collections on first insert; this function is a placeholder
+    if you want to create indexes or perform initial setup.
+    """
     try:
-        update_session_record(session_id, "chat_page_accessed")
-    except Exception:
-        logger.exception("Failed to update session record for chat_page_accessed")
-
-    logger.info(f"Chat page accessed: session_id={session_id}, user={session.get('user')}")
-
-    email = session.get("user")
-    user_details = get_or_create_agent_for_user(email, session_id)
-    logger.debug(f"user_details: {user_details}")
-
-    # Compose initial message
-    try:
-        initial_message = f"Hello, User Details are: {user_details['configurable']['patient_data']}"
-    except Exception:
-        initial_message = "Hello"
-        logger.exception("Failed to compose initial message from user_details")
-
-    try:
-        last_message = part_1_graph.invoke(
-            {"messages": ("user", initial_message)},
-            config=user_details
-        )
-        last_message_text = last_message['messages'][-1].content
-    except Exception:
-        logger.exception("Error invoking part_1_graph for initial message")
-        last_message_text = "Hello! How can I help you today?"
-
-    # Persist bot initial message
-    try:
-        patient_each_chat_table_collection(last_message_text)
-    except Exception:
-        logger.exception("Failed to persist initial chat message")
-
-    return render_template("index.html", greeting=last_message_text, session_id=session_id)
-
-
-# --------------------------
-# POST: Chat interaction
-# --------------------------
-@chat_bp.route("/chat/<session_id>", methods=["POST"])
-def chat(session_id):
-    # Session validation
-    if ("user" not in session or "session_id" not in session or session.get("session_id") != session_id):
-        logger.warning(f"Unauthorized chat attempt | session_id={session_id}")
-        try:
-            update_session_record(session_id, "unauthorized_chat_attempt")
-        except Exception:
-            logger.exception("Failed to update session record for unauthorized_chat_attempt")
-        return jsonify({"response": "Invalid session. Please log in again."}), 401
-
-    user_email = session.get("user")
-
-    # Accept JSON or form body
-    data = request.get_json(silent=True) or {}
-    user_input = (data.get("user_input") or request.form.get("user_input") or "").strip()
-
-    if not user_input:
-        return jsonify({"response": "Empty message"}), 400
-
-    # Persist user message
-    try:
-        patient_each_chat_table_collection(user_input)
-    except Exception:
-        logger.exception("Failed to persist user message")
-
-    now = datetime.now()
-    logger.info(f"[{session_id}] User ({user_email}) input: {user_input}")
-    try:
-        update_session_record(session_id, "user_message", {"message": user_input, "timestamp": str(now)})
-    except Exception:
-        logger.exception("Failed to update session record for user_message")
-
-    # Get agent & invoke graph
-    user_details = get_or_create_agent_for_user(user_email, session_id)
-
-    try:
-        last_message = part_1_graph.invoke(
-            {"messages": ("user", user_input)},
-            config=user_details
-        )
-        final_response = last_message['messages'][-1].content
+        # Example: ensure an index on email for fast lookups and uniqueness
+        patient_credentials_collection.create_index("email", unique=True)
+        patient_credentials_collection.create_index("phone", unique=True, sparse=True)
+        logger.info("Database indexes ensured (email, phone)")
     except Exception as e:
-        logger.exception(f"Error invoking graph for {session_id}: {e}")
-        final_response = "Sorry, something went wrong while processing your message."
+        logger.exception(f"init_db: failed to ensure indexes: {e}")
 
-    # Persist bot response
+
+def hash_password(password: str) -> str:
+    """Hash password using SHA256"""
+    return hashlib.sha256(password.encode()).hexdigest()
+
+
+def load_users_df() -> pd.DataFrame:
+    """Load users from MongoDB and return as DataFrame"""
     try:
-        patient_each_chat_table_collection(final_response)
-    except Exception:
-        logger.exception("Failed to persist bot response")
+        cursor = patient_credentials_collection.find({})
+        users_data = list(cursor)
 
+        df = pd.DataFrame(users_data)
+
+        if df.empty:
+            # Return an empty dataframe with expected columns to keep callers safe
+            expected_columns = ["firstname", "email", "phone", "country", "state", "location", "city", "password"]
+            logger.info("No users found in patient_credentials_collection")
+            return pd.DataFrame(columns=expected_columns)
+
+        if "_id" in df.columns:
+            df.drop("_id", axis=1, inplace=True)
+
+        expected_columns = ["firstname", "email", "phone", "country", "state", "location", "city", "password"]
+        for col in expected_columns:
+            if col not in df.columns:
+                df[col] = None
+
+        logger.info(f"Successfully loaded {len(df)} users from MongoDB")
+        return df
+
+    except Exception as e:
+        logger.exception(f"Error loading users from MongoDB: {str(e)}")
+        return pd.DataFrame(columns=["firstname", "email", "phone", "country", "state", "location", "city", "password"])
+
+
+def authenticate_user(email: str, password: str) -> bool:
+    """Return True if email/password match a document in MongoDB."""
     try:
-        update_session_record(session_id, "bot_response", {"response": final_response, "timestamp": str(now)})
-    except Exception:
-        logger.exception("Failed to update session record for bot_response")
+        hashed = hash_password(password)
+        user = patient_credentials_collection.find_one({"email": email, "password": hashed})
+        logger.info(f"Authentication attempt for {email}: {'success' if user else 'failed'}")
+        return user is not None
+    except Exception as e:
+        logger.exception(f"Authentication error for {email}: {e}")
+        return False
 
-    logger.info(f"[{session_id}] Bot response: {final_response}")
 
-    # Appointment booking triggers
-    appointment_triggers = [
-        'We are booking an appointment',
-        'receive a confirmation shortly.',
-        'confirmation shortly',
-        'processing your doctor appointment request',
-        'will receive a confirmation',
-        'processing your request',
-        'will proceed to finalize the booking',
-        'I will confirm the details as soon as possible',
-        'wait for a moment while I process your request',
-        'Please hold on for a moment',
-        'while I process this request'
-    ]
-
+def register_user(firstname: str, email: str, phone: str, country: str,
+                 state: str, location: str, city: str, password: str) -> Optional[str]:
+    """Register a new user in the database"""
     try:
-        if any(phrase in final_response for phrase in appointment_triggers):
-            # Extract patient data with fallback if 'llm' isn't available
-            try:
-                # Prefer calling with llm if available (legacy behavior)
-                patient_data = None
-                try:
-                    # If llm exists in globals(), attempt the old style call
-                    if "llm" in globals():
-                        patient_data = doctor_appointment_patient_data_extraction_prompt(llm).invoke(str(last_message['messages']))
-                    else:
-                        # If prompt object exposes an `invoke` directly
-                        invokable = doctor_appointment_patient_data_extraction_prompt
-                        # If it's callable returning an object with invoke(), try that
-                        if callable(invokable):
-                            try:
-                                maybe = invokable()
-                                if hasattr(maybe, "invoke"):
-                                    patient_data = maybe.invoke(str(last_message.get('messages', "")))
-                                else:
-                                    # If the callable returned something unexpected, try invoking directly
-                                    patient_data = invokable.invoke(str(last_message.get('messages', "")))
-                            except Exception:
-                                # Last resort: try using invokable.invoke directly (for class/static style)
-                                patient_data = invokable.invoke(str(last_message.get('messages', "")))
-                        else:
-                            # If it's an object with invoke
-                            patient_data = invokable.invoke(str(last_message.get('messages', "")))
-                except Exception:
-                    # Final fallback: call invoke in the simplest form and let errors propagate to outer except
-                    patient_data = doctor_appointment_patient_data_extraction_prompt.invoke(str(last_message.get('messages', "")))
+        # Normalize inputs a bit
+        email = (email or "").strip().lower()
+        phone = (phone or "").strip()
 
-                if not isinstance(patient_data, dict):
-                    # Ensure patient_data is a dict
-                    logger.warning("Extracted patient_data is not a dict; coercing to empty dict")
-                    patient_data = {}
-            except Exception:
-                logger.exception("Failed to extract patient data from response; using fallback")
-                patient_data = {}
+        # Check if email or phone already exists
+        if email and patient_credentials_collection.find_one({"email": email}):
+            logger.warning(f"Registration failed - email already exists: {email}")
+            return "Email already registered."
+        if phone and patient_credentials_collection.find_one({"phone": phone}):
+            logger.warning(f"Registration failed - phone already exists: {phone}")
+            return "Phone number already registered."
 
-            # Add status and persist patient info + chat
-            try:
-                patient_data.setdefault("appointment_status", "Pending")
-                push_patient_information_data_to_db(patient_data)
-            except Exception:
-                logger.exception("Failed to push patient information to DB")
+        # Hash the password
+        hashed = hash_password(password)
 
-            try:
-                chat_df = {
-                    "patient_name": patient_data.get("username") or patient_data.get("firstname") or user_email,
-                    "chat_history": str(last_message.get("messages", ""))
-                }
-                push_patient_chat_data_to_db(chat_df)
-            except Exception:
-                logger.exception("Failed to push patient chat data to DB")
+        now = datetime.now()
+        # Create the user document
+        user_document = {
+            "firstname": firstname,
+            "email": email,
+            "phone": phone,
+            "country": country,
+            "state": state,
+            "location": location,
+            "city": city,
+            "password": hashed,
+            "created_at": str(now)
+        }
 
-            try:
-                update_session_record(session_id, "appointment_booked", {
-                    "patient_name": patient_data.get("username") or patient_data.get("firstname") or user_email,
-                    "timestamp": str(now)
-                })
-            except Exception:
-                logger.exception("Failed to update session record for appointment_booked")
-
-            logger.info(f"[{session_id}] Appointment booking initiated for patient={patient_data.get('username') or patient_data.get('firstname') or user_email}")
-
-            return jsonify({"response": "Thank you! We are currently processing your doctor appointment request. The scheduling is in progress. You will receive a confirmation shortly."})
-
-    except Exception:
-        logger.exception("Error during appointment detection flow")
-
-    return jsonify({"response": final_response})
+        # Insert into MongoDB
+        insert_result = patient_credentials_collection.insert_one(user_document)
+        logger.info(f"New user registered: {email} (id={insert_result.inserted_id})")
+        return None  # Success
+    except Exception as e:
+        logger.exception(f"Registration error for {email}: {e}")
+        return "Registration failed. Please try again."
 
 
-# --------------------------
-# GET: Session check
-# --------------------------
-@chat_bp.route("/check-session", methods=["GET"])
-def check_session():
-    session_id = session.get("session_id")
-    valid = ("user" in session and session_id is not None)
-
+def get_user_contact_info(email: str) -> List[Dict[str, str]]:
+    """Get user contact information by email"""
     try:
-        if session_id:
-            update_session_record(session_id, "session_check", {"valid": valid})
-    except Exception:
-        logger.exception("Failed to update session record during session check")
+        df = load_users_df()
+        ele_user_id = df[df['email'] == email]
+        contact_info = ele_user_id[["firstname", "email", "phone"]]
+        logger.info(f"Retrieved contact info for user: {email}")
+        return contact_info.to_dict(orient="records")
+    except Exception as e:
+        logger.exception(f"Error getting contact info for {email}: {e}")
+        return []
 
-    if session_id:
-        logger.info(f"Session check performed | session_id={session_id} | valid={valid}")
-    else:
-        logger.warning("Session check attempted without session_id")
 
-    return jsonify({"valid": valid})
+def push_patient_information_data_to_db(patient_data: dict):
+    """Insert patient information into database"""
+    try:
+        now = datetime.now()
+        current_date = now.strftime("%Y-%m-%d")
+        current_time = now.strftime("%H:%M:%S")
+
+        patient_data['date'] = str(current_date)
+        patient_data['time'] = str(current_time)
+
+        insert_result = patient_information_details_table_collection.insert_one(patient_data)
+        logger.info(f"Inserted Patient Information Data ID: {insert_result.inserted_id}")
+        return insert_result
+    except Exception as e:
+        logger.exception(f"Error inserting patient information: {e}")
+        return None
+
+
+def push_patient_chat_data_to_db(patient_data: dict):
+    """Insert patient chat data into database"""
+    try:
+        now = datetime.now()
+        current_date = now.strftime("%Y-%m-%d")
+        current_time = now.strftime("%H:%M:%S")
+
+        patient_data['date'] = str(current_date)
+        patient_data['time'] = str(current_time)
+
+        insert_result = patient_chat_table_collection.insert_one(patient_data)
+        logger.info(f"Inserted Patient Chat Data ID: {insert_result.inserted_id}")
+        return insert_result
+    except Exception as e:
+        logger.exception(f"Error inserting patient chat data: {e}")
+        return None
+
+
+def push_patient_each_chat_message(message_text: str):
+    """Insert individual chat message into database (alias)
+
+    This forwards to patient_each_chat_table_collection to keep backwards compatibility.
+    """
+    return patient_each_chat_table_collection(message_text)
+
+
+def patient_each_chat_table_collection(message_text: str):
+    """Insert individual chat message into database"""
+    try:
+        now = datetime.now()
+        current_date = now.strftime("%Y-%m-%d")
+        current_time = now.strftime("%H:%M:%S")
+
+        patient_data = {
+            'date': current_date,
+            'time': current_time,
+            'message': message_text.strip()
+        }
+
+        insert_result = chat_collection.insert_one(patient_data)
+        logger.info(f"Inserted Patient Chat Data ID: {insert_result.inserted_id}")
+        return insert_result
+    except Exception as e:
+        logger.exception(f"Error inserting chat message: {e}")
+        return None
