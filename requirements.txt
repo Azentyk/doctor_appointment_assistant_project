@@ -18,10 +18,10 @@ tiktoken
 langchain-openai
 langchain_chroma
 langchain-chroma
-pymongo>=3.12,<4.0
 itsdangerous
 jinja2
 mysql-connector-python
 flask
 Flask-Session
 pysqlite3-binary
+pymongo[srv]==3.11
