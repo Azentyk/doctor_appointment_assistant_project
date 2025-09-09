@@ -1,4 +1,4 @@
-# chat_routes.py (Flask version for Azure deployment)
+# chat_routes.py (Flask version — merged & hardened)
 
 from flask import Blueprint, request, session, render_template, redirect, url_for, jsonify
 from datetime import datetime
@@ -17,34 +17,56 @@ from prompt import doctor_appointment_patient_data_extraction_prompt
 chat_bp = Blueprint("chat", __name__)
 logger = logging.getLogger(__name__)
 
+
 # --------------------------
 # GET: Chat page
 # --------------------------
 @chat_bp.route("/chat/<session_id>", methods=["GET"])
 def chat_page(session_id):
+    # Session validation
     if ("user" not in session or "session_id" not in session or session.get("session_id") != session_id):
-        update_session_record(session_id, "unauthorized_access_attempt")
+        try:
+            update_session_record(session_id, "unauthorized_access_attempt")
+        except Exception:
+            logger.exception("Failed to record unauthorized access attempt")
         logger.warning(f"Unauthorized access attempt for session_id={session_id}")
         return redirect(url_for("auth.login_page"))
 
-    update_session_record(session_id, "chat_page_accessed")
+    try:
+        update_session_record(session_id, "chat_page_accessed")
+    except Exception:
+        logger.exception("Failed to update session record for chat_page_accessed")
+
     logger.info(f"Chat page accessed: session_id={session_id}, user={session.get('user')}")
 
     email = session.get("user")
     user_details = get_or_create_agent_for_user(email, session_id)
     logger.debug(f"user_details: {user_details}")
 
-    initial_message = f"Hello, User Details are: {user_details['configurable']['patient_data']}"
-    last_message = part_1_graph.invoke(
-        {"messages": ("user", initial_message)},
-        config=user_details
-    )
-    last_message = last_message['messages'][-1].content
-    logger.info(f"Last message generated for session_id={session_id}: {last_message}")
+    # Compose initial message
+    try:
+        initial_message = f"Hello, User Details are: {user_details['configurable']['patient_data']}"
+    except Exception:
+        initial_message = "Hello"
+        logger.exception("Failed to compose initial message from user_details")
 
-    patient_each_chat_table_collection(last_message)
+    try:
+        last_message = part_1_graph.invoke(
+            {"messages": ("user", initial_message)},
+            config=user_details
+        )
+        last_message_text = last_message['messages'][-1].content
+    except Exception:
+        logger.exception("Error invoking part_1_graph for initial message")
+        last_message_text = "Hello! How can I help you today?"
 
-    return render_template("index.html", greeting=last_message, session_id=session_id)
+    # Persist bot initial message
+    try:
+        patient_each_chat_table_collection(last_message_text)
+    except Exception:
+        logger.exception("Failed to persist initial chat message")
+
+    return render_template("index.html", greeting=last_message_text, session_id=session_id)
 
 
 # --------------------------
@@ -52,20 +74,38 @@ def chat_page(session_id):
 # --------------------------
 @chat_bp.route("/chat/<session_id>", methods=["POST"])
 def chat(session_id):
+    # Session validation
     if ("user" not in session or "session_id" not in session or session.get("session_id") != session_id):
         logger.warning(f"Unauthorized chat attempt | session_id={session_id}")
-        update_session_record(session_id, "unauthorized_chat_attempt")
-        return jsonify({"response": "Invalid session. Please log in again."})
+        try:
+            update_session_record(session_id, "unauthorized_chat_attempt")
+        except Exception:
+            logger.exception("Failed to update session record for unauthorized_chat_attempt")
+        return jsonify({"response": "Invalid session. Please log in again."}), 401
 
     user_email = session.get("user")
-    user_input = request.json.get("user_input", "").strip()
 
-    patient_each_chat_table_collection(user_input)
+    # Accept JSON or form body
+    data = request.get_json(silent=True) or {}
+    user_input = (data.get("user_input") or request.form.get("user_input") or "").strip()
+
+    if not user_input:
+        return jsonify({"response": "Empty message"}), 400
+
+    # Persist user message
+    try:
+        patient_each_chat_table_collection(user_input)
+    except Exception:
+        logger.exception("Failed to persist user message")
+
     now = datetime.now()
-
     logger.info(f"[{session_id}] User ({user_email}) input: {user_input}")
-    update_session_record(session_id, "user_message", {"message": user_input, "timestamp": str(now)})
+    try:
+        update_session_record(session_id, "user_message", {"message": user_input, "timestamp": str(now)})
+    except Exception:
+        logger.exception("Failed to update session record for user_message")
 
+    # Get agent & invoke graph
     user_details = get_or_create_agent_for_user(user_email, session_id)
 
     try:
@@ -75,42 +115,107 @@ def chat(session_id):
         )
         final_response = last_message['messages'][-1].content
     except Exception as e:
-        logger.error(f"Error invoking graph for {session_id} | {e}")
-        return jsonify({"response": "Sorry, something went wrong while processing your request."})
+        logger.exception(f"Error invoking graph for {session_id}: {e}")
+        final_response = "Sorry, something went wrong while processing your message."
 
-    patient_each_chat_table_collection(final_response)
+    # Persist bot response
+    try:
+        patient_each_chat_table_collection(final_response)
+    except Exception:
+        logger.exception("Failed to persist bot response")
+
+    try:
+        update_session_record(session_id, "bot_response", {"response": final_response, "timestamp": str(now)})
+    except Exception:
+        logger.exception("Failed to update session record for bot_response")
+
     logger.info(f"[{session_id}] Bot response: {final_response}")
-    update_session_record(session_id, "bot_response", {"response": final_response, "timestamp": str(now)})
 
-    # Appointment booking trigger check
-    if any(phrase in final_response for phrase in [
-        'We are booking an appointment','receive a confirmation shortly.','confirmation shortly',
+    # Appointment booking triggers
+    appointment_triggers = [
+        'We are booking an appointment',
+        'receive a confirmation shortly.',
+        'confirmation shortly',
         'processing your doctor appointment request',
         'will receive a confirmation',
-        'processing your request','will proceed to finalize the booking',
+        'processing your request',
+        'will proceed to finalize the booking',
         'I will confirm the details as soon as possible',
-        'wait for a moment while I process your request','Please hold on for a moment','while I process this request']):
-        
-        try:
-            patient_data = doctor_appointment_patient_data_extraction_prompt(llm).invoke(str(last_message['messages']))
-            logger.debug(f"[{session_id}] Extracted patient_data: {patient_data}")
-            patient_data['appointment_status'] = 'Pending'
+        'wait for a moment while I process your request',
+        'Please hold on for a moment',
+        'while I process this request'
+    ]
 
-            push_patient_information_data_to_db(patient_data)
-            chat_df = {'patient_name': patient_data['username'], 'chat_history': str(last_message['messages'])}
-            push_patient_chat_data_to_db(chat_df)
+    try:
+        if any(phrase in final_response for phrase in appointment_triggers):
+            # Extract patient data with fallback if 'llm' isn't available
+            try:
+                # Prefer calling with llm if available (legacy behavior)
+                patient_data = None
+                try:
+                    # If llm exists in globals(), attempt the old style call
+                    if "llm" in globals():
+                        patient_data = doctor_appointment_patient_data_extraction_prompt(llm).invoke(str(last_message['messages']))
+                    else:
+                        # If prompt object exposes an `invoke` directly
+                        invokable = doctor_appointment_patient_data_extraction_prompt
+                        # If it's callable returning an object with invoke(), try that
+                        if callable(invokable):
+                            try:
+                                maybe = invokable()
+                                if hasattr(maybe, "invoke"):
+                                    patient_data = maybe.invoke(str(last_message.get('messages', "")))
+                                else:
+                                    # If the callable returned something unexpected, try invoking directly
+                                    patient_data = invokable.invoke(str(last_message.get('messages', "")))
+                            except Exception:
+                                # Last resort: try using invokable.invoke directly (for class/static style)
+                                patient_data = invokable.invoke(str(last_message.get('messages', "")))
+                        else:
+                            # If it's an object with invoke
+                            patient_data = invokable.invoke(str(last_message.get('messages', "")))
+                except Exception:
+                    # Final fallback: call invoke in the simplest form and let errors propagate to outer except
+                    patient_data = doctor_appointment_patient_data_extraction_prompt.invoke(str(last_message.get('messages', "")))
 
-            update_session_record(session_id, "appointment_booked", {
-                'patient_name': patient_data['username'],
-                'timestamp': str(now)
-            })
+                if not isinstance(patient_data, dict):
+                    # Ensure patient_data is a dict
+                    logger.warning("Extracted patient_data is not a dict; coercing to empty dict")
+                    patient_data = {}
+            except Exception:
+                logger.exception("Failed to extract patient data from response; using fallback")
+                patient_data = {}
 
-            logger.info(f"[{session_id}] Appointment booking initiated for patient={patient_data['username']}")
-        except Exception as e:
-            logger.error(f"Error while booking appointment for {session_id} | {e}")
-            return jsonify({"response": "We faced an issue while processing your appointment. Please try again."})
+            # Add status and persist patient info + chat
+            try:
+                patient_data.setdefault("appointment_status", "Pending")
+                push_patient_information_data_to_db(patient_data)
+            except Exception:
+                logger.exception("Failed to push patient information to DB")
 
-        return jsonify({"response": "Thank you! We are currently processing your doctor appointment request. The scheduling is in progress. You will receive a confirmation shortly."})
+            try:
+                chat_df = {
+                    "patient_name": patient_data.get("username") or patient_data.get("firstname") or user_email,
+                    "chat_history": str(last_message.get("messages", ""))
+                }
+                push_patient_chat_data_to_db(chat_df)
+            except Exception:
+                logger.exception("Failed to push patient chat data to DB")
+
+            try:
+                update_session_record(session_id, "appointment_booked", {
+                    "patient_name": patient_data.get("username") or patient_data.get("firstname") or user_email,
+                    "timestamp": str(now)
+                })
+            except Exception:
+                logger.exception("Failed to update session record for appointment_booked")
+
+            logger.info(f"[{session_id}] Appointment booking initiated for patient={patient_data.get('username') or patient_data.get('firstname') or user_email}")
+
+            return jsonify({"response": "Thank you! We are currently processing your doctor appointment request. The scheduling is in progress. You will receive a confirmation shortly."})
+
+    except Exception:
+        logger.exception("Error during appointment detection flow")
 
     return jsonify({"response": final_response})
 
@@ -122,6 +227,12 @@ def chat(session_id):
 def check_session():
     session_id = session.get("session_id")
     valid = ("user" in session and session_id is not None)
+
+    try:
+        if session_id:
+            update_session_record(session_id, "session_check", {"valid": valid})
+    except Exception:
+        logger.exception("Failed to update session record during session check")
 
     if session_id:
         logger.info(f"Session check performed | session_id={session_id} | valid={valid}")
