@@ -27,6 +27,7 @@ chat_collection = db["patient_each_chat_table"]
 patient_credentials_collection = db["patient_credentials"]
 logger = logging.getLogger(__name__)
 
+
 def init_db():
     """Initialize database collections if they don't exist.
 
