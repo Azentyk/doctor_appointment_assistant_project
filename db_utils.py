@@ -5,8 +5,6 @@ import pandas as pd
 from pymongo import MongoClient
 import logging
 import os
-import certifi
-from pymongo.server_api import ServerApi
 
 from urllib.parse import quote_plus
 
@@ -20,7 +18,7 @@ from urllib.parse import quote_plus
 
 # Initialize MongoDB client with TLS
 # client = MongoClient("mongodb://doctor-appointment-assistant-server:r05e2ZWM4DJrMGfEE02D8oJDFdhXp9ZCi57AqAECn4mval7SKosxhqVCVO80dtCu2Tkfr84ML0AyACDbykAtSw==@doctor-appointment-assistant-server.mongo.cosmos.azure.com:10255/?ssl=true&retrywrites=false&replicaSet=globaldb&maxIdleTimeMS=120000&appName=@doctor-appointment-assistant-server@",tls=True, tlsAllowInvalidCertificates=False)
-client = MongoClient("mongodb+srv://azentyk:azentyk123@cluster0.b9aaq47.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0",server_api=ServerApi('1'))
+client = MongoClient("mongodb+srv://azentyk:azentyk123@cluster0.b9aaq47.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0")
 db = client["patient_db"]
 # Collections
 patient_information_details_table_collection = db["patient_information_details_table"]
