@@ -25,7 +25,6 @@ patient_information_details_table_collection = db["patient_information_details_t
 patient_chat_table_collection = db["patient_chat_table"]
 chat_collection = db["patient_each_chat_table"]
 patient_credentials_collection = db["patient_credentials"]
-
 logger = logging.getLogger(__name__)
 
 
