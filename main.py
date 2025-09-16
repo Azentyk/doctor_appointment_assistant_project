@@ -15,35 +15,36 @@ from authentication import auth_bp
 
 
 def create_app():
-    """Flask application factory for Azure/Gunicorn deployment."""
-    # Initialize logging first
-    setup_logging()
-
-    # Initialize database (ensures collections/indexes exist)
-    init_db()
-
-    # Create Flask app
+    # Initialize Flask app
     app = Flask(__name__, template_folder="templates", static_folder="static")
 
-    # Secret key (override in production with env var)
+    # Secret key (required for session management)
     app.secret_key = os.getenv("SECRET_KEY", "your_secret_key")
 
-    # Session configuration (server-side storage with filesystem)
+    # Configure session for server-side storage
     app.config["SESSION_TYPE"] = "filesystem"
     app.config["SESSION_FILE_DIR"] = os.path.join(os.getcwd(), "flask_session")
     app.config["SESSION_PERMANENT"] = False
+    # Secret key (override in production with env var)
+    app.secret_key = os.getenv("SECRET_KEY", "your_secret_key")
     app.config["SESSION_USE_SIGNER"] = True  # add signing for extra safety
     app.config["SESSION_COOKIE_HTTPONLY"] = True
     app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
     app.config["SESSION_COOKIE_SECURE"] = os.getenv("FLASK_ENV") == "production"
-
+    
     Session(app)
+
+    # Initialize logging
+    setup_logging()
+
+    # Initialize database
+    init_db()
 
     # Register blueprints
     app.register_blueprint(auth_bp)
     app.register_blueprint(chat_bp)
 
-    # Default route
+    # Default route (renders index.html with session_id injected)
     @app.route("/")
     def index():
         # ensure a session exists
@@ -54,10 +55,13 @@ def create_app():
     return app
 
 
-# Expose app for Gunicorn / Azure
 app = create_app()
 
+# Azure entry point
 if __name__ == "__main__":
-    port = int(os.environ.get("PORT", 5000))
+    port = int(os.environ.get("PORT", 5000))  # Azure sets PORT env var
     debug = os.getenv("FLASK_DEBUG", "0") == "1"
-    app.run(host="0.0.0.0", port=port, debug=debug)
+    app.run(host="0.0.0.0", port=port, debug=True)
+
+
+
